@@ -111,12 +111,16 @@
         _splitAt:/\ |,/g,
         _existingAtIndex:0,
         _keys:{
-            backspace:[8],
-            enter:[13],
-            space:[32],
-            comma:[44, 188],
-            tab:[9],
-            semicolon:[59,186]
+            systemKeys: {
+                backspace: [8],
+                enter:[13],
+                tab:[9]
+            },
+            symbolKeys: {
+                space:[" "],
+                comma:[","],
+                semicolon:[";"]
+            }
         },
 
         _sortable:{
@@ -227,11 +231,19 @@
             });
 
             this.input.keydown(function (e) {
-                self._processKeyEvent(e);
+                //is system key?
+                var pressedKey = e.which || e.keyCode;
+                if (self._isSystemKey(pressedKey)) {
+                    self._processKeyEvent(e, pressedKey);
+                }
             });
+
             //setup keydown handler
             this.input.keypress(function (e) {
-                self._processKeyEvent(e);
+                var pressedKey = e.which || e.keyCode || e.charCode;
+                if (self._isSymbolKey(pressedKey)) {
+                    self._processKeyEvent(e, pressedKey);
+                }
             });
 
             this.input.bind("paste", function (e) {
@@ -303,18 +315,16 @@
 
         },
 
-        _processKeyEvent: function(e) {
+        _processKeyEvent: function(e, pressedKey) {
             if (this.isKeyEventProcessed) {
                 return; //don't process key events twice
             }
 
-            var pressedKey = e.which || e.keyCode || e.charCode;
-            console.log("processKeyEvent:" + pressedKey);
             var lastLi = this.element.children(".tagit-choice:last");
 
             this.isKeyEventProcessed = true;
 
-            if (pressedKey == this._keys.backspace) {
+            if (pressedKey == this._keys.systemKeys.backspace) {
                 return this._backspace(lastLi);
             }
 
@@ -506,12 +516,34 @@
             });
         },
 
-        _isInitKey:function (keyCode) {
+        _isSystemKey: function(keyCode) {
+            var result = false;
+            $.each(this._keys.systemKeys, function(i, e){
+                if ($.inArray(keyCode, e) != -1) {
+                    result = true;
+                }
+            });
+            return result;
+        },
 
+        _isSymbolKey: function(keyCode) {
+            var result = false;
+            $.each(this._keys.symbolKeys, function(i, e){
+                if ($.inArray(String.fromCharCode(keyCode), e) != -1) {
+                    result =  true;
+                }
+            });
+            return result;
+        },
+
+        _isInitKey:function (keyCode) {
             var keyName = "";
-            for (var key in this._keys)
-                if ($.inArray(keyCode, this._keys[key]) != -1)
-                    keyName = key;
+            for (var keyTypeObject in this._keys) {
+                for (var key in  this._keys[keyTypeObject]) {
+                    if (($.inArray(keyCode, this._keys[keyTypeObject][key]) != -1) || ($.inArray(String.fromCharCode(keyCode), this._keys[keyTypeObject][key]) != -1))
+                        keyName = key;
+                }
+            }
 
             if ($.inArray(keyName, this.options.triggerKeys) != -1)
                 return true;
@@ -519,7 +551,7 @@
         },
 
         _isTabKey:function (keyCode) {
-            var tabKeys = this._keys['tab'];
+            var tabKeys = this._keys.systemKeys['tab'];
             return $.inArray(keyCode, tabKeys) > -1;
         },
 
